@@ -7,20 +7,6 @@ import datetime
 app = Flask(__name__, static_folder='static')
 app.secret_key = os.environ.get("SECRET_KEY", "devsecretkey")
 
-# ----------------- DATABASE -----------------
-def init_db():
-    conn = sqlite3.connect('orders.db')
-    cursor = conn.cursor()
-    # CREATE DEFAULT ADMIN IF NOT EXISTS
-cursor.execute("SELECT * FROM users WHERE email='admin@gmail.com'")
-admin = cursor.fetchone()
-
-if not admin:
-    admin_password = generate_password_hash("admin123")
-    cursor.execute(
-        "INSERT INTO users (name, email, password, is_admin) VALUES (?, ?, ?, ?)",
-        ("Admin", "admin@gmail.com", admin_password, 1)
-    )
 
     # USERS
     cursor.execute('''
@@ -77,6 +63,21 @@ if not admin:
         cursor.execute("UPDATE products SET image_url='images/Brown-eggs.webp' WHERE name='Eggs'")
         cursor.execute("UPDATE products SET image_url='images/rice.webp' WHERE name='Rice'")
         cursor.execute("UPDATE products SET image_url='images/sasi_milk.png' WHERE name='Sasi Milk'")
+        # ----------------- DATABASE -----------------
+def init_db():
+    conn = sqlite3.connect('orders.db')
+    cursor = conn.cursor()
+    # CREATE DEFAULT ADMIN IF NOT EXISTS
+cursor.execute("SELECT * FROM users WHERE email='admin@gmail.com'")
+admin = cursor.fetchone()
+
+if not admin:
+    admin_password = generate_password_hash("admin123")
+    cursor.execute(
+        "INSERT INTO users (name, email, password, is_admin) VALUES (?, ?, ?, ?)",
+        ("Admin", "admin@gmail.com", admin_password, 1)
+    )
+
 
     conn.commit()
     conn.close()
@@ -373,3 +374,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
 
     app.run(host='0.0.0.0', port=port)
+
