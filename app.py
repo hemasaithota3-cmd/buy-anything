@@ -7,43 +7,48 @@ import datetime
 app = Flask(__name__, static_folder='static')
 app.secret_key = os.environ.get("SECRET_KEY", "devsecretkey")
 
+# ----------------- DATABASE -----------------
+def init_db():
+    conn = sqlite3.connect('orders.db')
+    cursor = conn.cursor()
 
-    # USERS
+    # USERS TABLE
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            email TEXT UNIQUE,
-            password TEXT,
-            is_admin INTEGER DEFAULT 0
-        )
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        email TEXT UNIQUE,
+        password TEXT,
+        is_admin INTEGER DEFAULT 0
+    )
     ''')
 
-    # ORDERS
+    # ORDERS TABLE
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            items TEXT,
-            total INTEGER,
-            status TEXT DEFAULT 'Pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        items TEXT,
+        total INTEGER,
+        status TEXT DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )
     ''')
-    # PRODUCTS
+
+    # PRODUCTS TABLE
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            description TEXT,
-            price REAL,
-            image_url TEXT,
-            category TEXT,
-            stock INTEGER DEFAULT 100
-        )
+    CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        description TEXT,
+        price REAL,
+        image_url TEXT,
+        category TEXT,
+        stock INTEGER DEFAULT 100
+    )
     ''')
-    
+
     # SEED INITIAL PRODUCTS IF EMPTY
     cursor.execute('SELECT COUNT(*) FROM products')
     if cursor.fetchone()[0] == 0:
@@ -54,30 +59,26 @@ app.secret_key = os.environ.get("SECRET_KEY", "devsecretkey")
             ("Sasi Ghee", "Sasi Ghee 1 litre pack - ₹3000. -10% discount you won", 3000.0, "https://ueirorganic.com/cdn/shop/files/purecowghee.jpg?v=1689066451", "Dairy"),
             ("Palm Oil", "Sasi Refined Palm Oil 1 litre - ₹180. -5% discount you won", 180.0, "https://media.istockphoto.com/id/626118394/photo/group-of-plastic-bottles-with-palm-oil.jpg?s=612x612&w=0&k=20&c=YcWUxXkgWRvBW_7eQUKlblxmqtRzcVPnZpBVL9tlQ9Y=", "Oils")
         ]
+
         cursor.executemany('''
-            INSERT INTO products (name, description, price, image_url, category)
-            VALUES (?, ?, ?, ?, ?)
+        INSERT INTO products (name, description, price, image_url, category)
+        VALUES (?, ?, ?, ?, ?)
         ''', initial_products)
 
-        # Remove incorrect records just in case they were seeded incorrectly in the previous run
         cursor.execute("UPDATE products SET image_url='images/Brown-eggs.webp' WHERE name='Eggs'")
         cursor.execute("UPDATE products SET image_url='images/rice.webp' WHERE name='Rice'")
         cursor.execute("UPDATE products SET image_url='images/sasi_milk.png' WHERE name='Sasi Milk'")
-        # ----------------- DATABASE -----------------
-def init_db():
-    conn = sqlite3.connect('orders.db')
-    cursor = conn.cursor()
-    # CREATE DEFAULT ADMIN IF NOT EXISTS
-cursor.execute("SELECT * FROM users WHERE email='admin@gmail.com'")
-admin = cursor.fetchone()
 
-if not admin:
-    admin_password = generate_password_hash("admin123")
-    cursor.execute(
-        "INSERT INTO users (name, email, password, is_admin) VALUES (?, ?, ?, ?)",
-        ("Admin", "admin@gmail.com", admin_password, 1)
-    )
+    # CREATE DEFAULT ADMIN
+    cursor.execute("SELECT * FROM users WHERE email='admin@gmail.com'")
+    admin = cursor.fetchone()
 
+    if not admin:
+        admin_password = generate_password_hash("admin123")
+        cursor.execute(
+            "INSERT INTO users (name, email, password, is_admin) VALUES (?, ?, ?, ?)",
+            ("Admin", "admin@gmail.com", admin_password, 1)
+        )
 
     conn.commit()
     conn.close()
@@ -171,7 +172,6 @@ def place_order():
     items = request.form.get('items')
     user_id = session['user_id']
 
-    # Simulated Payment Success
     payment_status = "Success"
 
     if payment_status == "Success":
@@ -211,9 +211,6 @@ def my_orders():
 
     return render_template('my_orders.html', orders=orders)
 
-# ----------------- ADMIN DASHBOARD -----------------
-    # DELETED DUPLICATE /admin ROUTE
-
 # ----------------- UPDATE ORDER STATUS (ADMIN) -----------------
 @app.route('/update_status/<int:order_id>', methods=['POST'])
 def update_status(order_id):
@@ -230,23 +227,16 @@ def update_status(order_id):
 
     return redirect('/admin')
 
-
 @app.route('/password', methods=['GET','POST'])
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email')
-        print("Email entered:", email) 
 
         conn = sqlite3.connect('orders.db')
         cursor = conn.cursor()
-
         cursor.execute("SELECT * FROM users WHERE email=?", (email,))
         user = cursor.fetchone()
-        print("User found:", user)
-        
-
         conn.close()
-        
 
         if user:
             session['reset_user'] = email
@@ -255,6 +245,7 @@ def forgot_password():
             return "User not found"
 
     return render_template('password.html')
+
 @app.route('/reset_password', methods=['GET','POST'])
 def reset_password():
 
@@ -281,13 +272,7 @@ def reset_password():
         return redirect('/login')
 
     return render_template('reset_password.html')
-conn = sqlite3.connect('orders.db')
-cursor = conn.cursor()
 
-cursor.execute("SELECT id, name, email FROM users")
-print(cursor.fetchall())
-
-conn.close()
 @app.route('/admin_users')
 def admin_users():
 
@@ -303,6 +288,7 @@ def admin_users():
     conn.close()
 
     return render_template("admin_users.html", users=users)
+
 @app.route("/admin")
 def admin():
     if 'user_id' not in session or session.get('is_admin') != 1:
@@ -312,11 +298,9 @@ def admin():
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    # get users
     cur.execute("SELECT * FROM users")
     users = cur.fetchall()
 
-    # get orders
     cur.execute('''
         SELECT orders.id, users.name, users.email, orders.items, orders.total, orders.status, orders.created_at
         FROM orders
@@ -325,7 +309,6 @@ def admin():
     ''')
     orders = cur.fetchall()
 
-    # get products
     cur.execute("SELECT * FROM products ORDER BY id DESC")
     products = cur.fetchall()
 
@@ -368,10 +351,7 @@ def delete_product(product_id):
 
     return redirect('/admin')
 
-
 # ----------------- RUN -----------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-
     app.run(host='0.0.0.0', port=port)
-
