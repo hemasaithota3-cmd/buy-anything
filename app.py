@@ -11,6 +11,16 @@ app.secret_key = os.environ.get("SECRET_KEY", "devsecretkey")
 def init_db():
     conn = sqlite3.connect('orders.db')
     cursor = conn.cursor()
+    # CREATE DEFAULT ADMIN IF NOT EXISTS
+cursor.execute("SELECT * FROM users WHERE email='admin@gmail.com'")
+admin = cursor.fetchone()
+
+if not admin:
+    admin_password = generate_password_hash("admin123")
+    cursor.execute(
+        "INSERT INTO users (name, email, password, is_admin) VALUES (?, ?, ?, ?)",
+        ("Admin", "admin@gmail.com", admin_password, 1)
+    )
 
     # USERS
     cursor.execute('''
@@ -361,4 +371,5 @@ def delete_product(product_id):
 # ----------------- RUN -----------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
+
     app.run(host='0.0.0.0', port=port)
